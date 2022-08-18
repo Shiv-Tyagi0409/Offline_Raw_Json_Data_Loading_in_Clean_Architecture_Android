@@ -1,6 +1,7 @@
 package com.finance.loan.sepiapets.presenter.userstory1
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -17,6 +18,8 @@ import com.finance.loan.sepiapets.databinding.FragmentFirstBinding
 import com.finance.loan.sepiapets.domain.model.Pet
 import com.finance.loan.sepiapets.common.extension.showGenericAlertDialog
 import com.finance.loan.sepiapets.common.extension.showToast
+import com.finance.loan.sepiapets.common.util.NetworkStatus
+import com.finance.loan.sepiapets.common.util.NetworkStatusHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -34,6 +37,7 @@ class FirstFragment : Fragment() {
 
     private val viewModel: FirstViewModel by viewModels()
     private  val c = Calendar.getInstance()
+    private var connectionStatus: Boolean = false
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -64,6 +68,8 @@ class FirstFragment : Fragment() {
 
         if (hour in 9..18 ){
             if (day in 1..5){
+                checkConnection()
+                Log.d("ConnectionStatus",connectionStatus.toString())
                 observeData()
             }else {
                 requireActivity().showGenericAlertDialog("App function during business days only")
@@ -109,8 +115,15 @@ class FirstFragment : Fragment() {
         mAdapter.setItemTapListener(object : FirstAdapter.OnItemTap{
 
             override fun onTap(pet: Pet) {
-                val b = bundleOf("petUrl" to pet.content_url)
-                findNavController().navigate(R.id.SecondFragment, b)
+
+
+                if (connectionStatus){
+                    val b = bundleOf("petUrl" to pet.content_url)
+                    findNavController().navigate(R.id.SecondFragment, b)
+                }else {
+                    requireActivity().showToast("No Internet Please Try Again Later")
+                }
+
             }
         })
 
@@ -120,6 +133,19 @@ class FirstFragment : Fragment() {
         }
 
 
+    }
+
+    private fun checkConnection() {
+        NetworkStatusHelper(requireContext()).observe(viewLifecycleOwner) {
+            connectionStatus = it == NetworkStatus.Available
+            if (it == NetworkStatus.Available){
+                connectionStatus = true
+
+            } else {
+                connectionStatus = false
+                requireActivity().showToast("No Internet Connectivity")
+            }
+        }
     }
 
     override fun onDestroyView() {
